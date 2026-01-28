@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1769483648413,
+      "tag": "20260127031408_smart_vision",
+      "breakpoints": true
+    }
+  ]
+}

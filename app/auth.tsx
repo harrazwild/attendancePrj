@@ -1,0 +1,303 @@
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
+import { colors, spacing, borderRadius, typography } from '@/styles/commonStyles';
+
+export default function AuthScreen() {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [role, setRole] = useState<'student' | 'lecturer'>('student');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const { signInWithEmail, signUpWithEmail, user } = useAuth();
+  const router = useRouter();
+
+  // Handle navigation when user state changes
+  useEffect(() => {
+    if (user && !loading) {
+      console.log('User detected in auth screen:', { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role,
+        student_id: user.student_id 
+      });
+      
+      if (user.role === 'student') {
+        console.log('Redirecting student to /student-qr');
+        router.replace('/student-qr' as any);
+      } else if (user.role === 'lecturer') {
+        console.log('Redirecting lecturer to /(tabs)/(home)');
+        router.replace('/(tabs)/(home)' as any);
+      } else {
+        console.log('Unknown role, defaulting to lecturer interface');
+        router.replace('/(tabs)/(home)' as any);
+      }
+    }
+  }, [user, loading, router]);
+
+  const handleSubmit = async () => {
+    console.log('Auth form submitted:', { isLogin, email, role });
+    setError('');
+    setLoading(true);
+
+    try {
+      if (isLogin) {
+        console.log('Attempting login...');
+        await signInWithEmail(email, password);
+        console.log('Login successful');
+        // Navigation will be handled by useEffect when user state updates
+      } else {
+        console.log('Attempting signup...');
+        if (!name.trim()) {
+          setError('Name is required');
+          setLoading(false);
+          return;
+        }
+        if (role === 'student' && !studentId.trim()) {
+          setError('Student ID is required for students');
+          setLoading(false);
+          return;
+        }
+        
+        await signUpWithEmail(email, password, name, studentId, role);
+        console.log('Signup successful');
+        // Navigation will be handled by useEffect when user state updates
+      }
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      setError(err.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Attendance System</Text>
+              <Text style={styles.subtitle}>
+                {isLogin ? 'Sign in to continue' : 'Create your account'}
+              </Text>
+            </View>
+
+            {!isLogin && (
+              <>
+                <View style={styles.roleSelector}>
+                  <TouchableOpacity
+                    style={[styles.roleButton, role === 'student' && styles.roleButtonActive]}
+                    onPress={() => setRole('student')}
+                    disabled={loading}
+                  >
+                    <Text style={[styles.roleButtonText, role === 'student' && styles.roleButtonTextActive]}>
+                      Student
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleButton, role === 'lecturer' && styles.roleButtonActive]}
+                    onPress={() => setRole('lecturer')}
+                    disabled={loading}
+                  >
+                    <Text style={[styles.roleButtonText, role === 'lecturer' && styles.roleButtonTextActive]}>
+                      Lecturer
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TextInput
+                  style={styles.input}
+                  placeholder="Full Name"
+                  placeholderTextColor={colors.textLight}
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  editable={!loading}
+                />
+
+                {role === 'student' && (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Student ID / Matric Number"
+                    placeholderTextColor={colors.textLight}
+                    value={studentId}
+                    onChangeText={setStudentId}
+                    autoCapitalize="characters"
+                    editable={!loading}
+                  />
+                )}
+              </>
+            )}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.textLight}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.textLight}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              editable={!loading}
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>{isLogin ? 'Sign In' : 'Sign Up'}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={() => {
+                setIsLogin(!isLogin);
+                setError('');
+              }}
+              disabled={loading}
+            >
+              <Text style={styles.switchText}>
+                {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  content: {
+    padding: spacing.lg,
+  },
+  header: {
+    marginBottom: spacing.xl,
+    alignItems: 'center',
+  },
+  title: {
+    ...typography.h1,
+    color: colors.primary,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  roleSelector: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  roleButton: {
+    flex: 1,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: 'center',
+    backgroundColor: colors.card,
+  },
+  roleButtonActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
+  },
+  roleButtonText: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  roleButtonTextActive: {
+    color: colors.textDark,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...typography.body,
+    backgroundColor: colors.card,
+    color: colors.text,
+  },
+  button: {
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  buttonText: {
+    color: colors.textDark,
+    ...typography.body,
+    fontWeight: '600',
+  },
+  switchButton: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  switchText: {
+    color: colors.primary,
+    ...typography.bodySmall,
+  },
+  error: {
+    color: colors.error,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    ...typography.bodySmall,
+  },
+});
