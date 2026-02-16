@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
+import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@/components/IconSymbol';
 import { colors, spacing, borderRadius, typography } from '@/styles/commonStyles';
 
@@ -18,7 +19,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    console.log('DashboardScreen mounted, user:', user);
+    console.log('DashboardScreen mounted/updated. User:', user ? user.id : 'null', 'AuthLoading:', authLoading);
     if (!authLoading && !user) {
       console.log('No user found, redirecting to auth');
       router.replace('/auth');
@@ -28,13 +29,25 @@ export default function DashboardScreen() {
     // TODO: Backend Integration - GET /api/lecturer/dashboard to get { ongoingSessions, todayScans, lecturerName }
     // For now, use mock data
     const fetchDashboard = async () => {
+      console.log('fetchDashboard called');
       setLoading(true);
       try {
         console.log('Fetching dashboard data...');
-        // Mock data
+
+        // Fetch total students count
+        const { count, error } = await supabase
+          .from('user')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'student');
+
+        if (error) {
+          console.error('Error fetching student count:', error);
+        }
+
+        // Mock data for other fields, but use real student count
         setDashboardData({
           ongoingSessions: 2,
-          todayScans: 45,
+          todayScans: count || 0,
           lecturerName: user?.name || 'Lecturer',
         });
       } catch (error) {
@@ -140,7 +153,7 @@ export default function DashboardScreen() {
             style={styles.actionCard}
             onPress={() => {
               console.log('User tapped View Statistics button');
-              // TODO: Navigate to statistics screen
+              router.push('/(tabs)/(home)/statistics');
             }}
           >
             <View style={styles.actionIconContainer}>

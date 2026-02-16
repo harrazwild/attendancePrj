@@ -168,6 +168,41 @@ export default function ScanScreen() {
     isProcessing.current = false;
   };
 
+  const handleDeleteSession = async () => {
+    Alert.alert(
+      'Delete Session',
+      'Are you sure you want to delete this session? This will remove all attendance records for this session.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setProcessing(true);
+              const { error } = await supabase
+                .from('attendance_sessions')
+                .delete()
+                .eq('id', sessionId);
+
+              if (error) throw error;
+
+              router.replace('/(tabs)/(home)');
+            } catch (error) {
+              console.error('Error deleting session:', error);
+              Alert.alert('Error', 'Failed to delete session');
+            } finally {
+              setProcessing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -178,7 +213,14 @@ export default function ScanScreen() {
           }}
         />
         <Text style={styles.headerTitle}>Scan QR Code</Text>
-        <View style={styles.headerSpacer} />
+        <TouchableOpacity onPress={handleDeleteSession} style={styles.deleteButtonHeader}>
+          <IconSymbol
+            ios_icon_name="trash"
+            android_material_icon_name="delete"
+            size={24}
+            color={colors.error}
+          />
+        </TouchableOpacity>
       </View>
 
       {courseName && (
@@ -283,6 +325,9 @@ const styles = StyleSheet.create({
   },
   headerSpacer: {
     width: 60,
+  },
+  deleteButtonHeader: {
+    padding: spacing.sm,
   },
   cameraContainer: {
     flex: 1,

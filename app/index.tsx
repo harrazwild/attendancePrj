@@ -9,15 +9,20 @@ export default function Index() {
   const router = useRouter();
 
   useEffect(() => {
+    console.log('[ROOT] Index useEffect triggered. Loading:', loading, 'User:', user ? user.id : 'null');
     if (!loading) {
       if (user) {
+        console.log('[ROOT] User authenticated, redirecting based on role:', user.role);
         // User is authenticated, redirect based on role
         if (user.role === 'student') {
+          console.log('[ROOT] Redirecting to /student-qr');
           router.replace('/student-qr' as any);
         } else {
+          console.log('[ROOT] Redirecting to /(tabs)/(home)');
           router.replace('/(tabs)/(home)' as any);
         }
       } else {
+        console.log('[ROOT] User not authenticated, redirecting to /auth');
         // User is not authenticated, redirect to auth
         router.replace('/auth');
       }

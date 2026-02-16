@@ -53,7 +53,7 @@ export default function StudentQRScreen() {
   }
 
   const userName = user?.name || 'Student';
-  const studentId = user?.student_id || user?.email || '';
+  const studentId = user?.student_id || 'Not Set';
 
   return (
     <SafeAreaView style={styles.container}>
