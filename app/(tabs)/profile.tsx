@@ -42,8 +42,11 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
-          
-          <TouchableOpacity style={styles.menuItem}>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/edit-profile')}
+          >
             <View style={styles.menuIconContainer}>
               <IconSymbol
                 ios_icon_name="person.fill"
@@ -88,8 +91,14 @@ export default function ProfileScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          
-          <TouchableOpacity style={styles.menuItem}>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              console.log('Navigating to Help & Support');
+              router.push('/help-support');
+            }}
+          >
             <View style={styles.menuIconContainer}>
               <IconSymbol
                 ios_icon_name="info.circle.fill"
@@ -110,7 +119,10 @@ export default function ProfileScreen() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/privacy-policy')}
+          >
             <View style={styles.menuIconContainer}>
               <IconSymbol
                 ios_icon_name="doc.text.fill"

@@ -23,6 +23,7 @@ interface AuthContextType {
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
   fetchUser: () => Promise<void>;
+  updateProfile: (name: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -213,6 +214,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = async (name: string) => {
+    try {
+      if (!user?.id) throw new Error("No user logged in");
+      
+      const { error } = await supabase
+        .from('user')
+        .update({ name })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setUser(prev => prev ? { ...prev, name } : null);
+    } catch (error) {
+      console.error("Update profile failed:", error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -225,6 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGitHub,
         signOut,
         fetchUser,
+        updateProfile,
       }}
     >
       {children}
