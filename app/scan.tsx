@@ -223,14 +223,29 @@ export default function ScanScreen() {
         </TouchableOpacity>
       </View>
 
-      {courseName && (
-        <View style={styles.sessionInfo}>
-          <Text style={styles.sessionInfoText}>
-            {courseCode} {courseName}
-          </Text>
-          {week && <Text style={styles.sessionInfoSubText}>Week {week}</Text>}
-        </View>
-      )}
+      {
+        courseName && (
+          <View style={styles.sessionInfoHeader}>
+            <View style={styles.sessionInfoTextContainer}>
+              <Text style={styles.sessionInfoText}>
+                {courseCode} {courseName}
+              </Text>
+              {week && <Text style={styles.sessionInfoSubText}>Week {week}</Text>}
+            </View>
+            <TouchableOpacity
+              style={styles.detailsButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/session-details',
+                  params: { sessionId }
+                });
+              }}
+            >
+              <Text style={styles.detailsButtonText}>View Details</Text>
+            </TouchableOpacity>
+          </View>
+        )
+      }
 
       <View style={styles.cameraContainer}>
         {!lastScanned ? (
@@ -279,13 +294,15 @@ export default function ScanScreen() {
         )}
       </View>
 
-      {processing && (
-        <View style={styles.processingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.processingText}>Processing...</Text>
-        </View>
-      )}
-    </SafeAreaView>
+      {
+        processing && (
+          <View style={styles.processingOverlay}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.processingText}>Processing...</Text>
+          </View>
+        )
+      }
+    </SafeAreaView >
   );
 }
 
@@ -432,10 +449,15 @@ const styles = StyleSheet.create({
     color: colors.textDark,
     marginTop: spacing.md,
   },
-  sessionInfo: {
+  sessionInfoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     padding: spacing.md,
     backgroundColor: colors.primary,
-    alignItems: 'center',
+  },
+  sessionInfoTextContainer: {
+    flex: 1,
   },
   sessionInfoText: {
     ...typography.body,
@@ -446,6 +468,18 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textDark,
     marginTop: 2,
+  },
+  detailsButton: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.md,
+  },
+  detailsButtonText: {
+    ...typography.caption,
+    color: colors.textDark,
+    fontWeight: '600',
   },
   resultContainer: {
     ...StyleSheet.absoluteFillObject,

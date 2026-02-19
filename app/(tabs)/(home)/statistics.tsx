@@ -82,6 +82,16 @@ export default function StatisticsScreen() {
         setSessionFound(null);
 
         try {
+            // Step 0: Fetch ALL enrolled students (assuming all users with role 'student' are enrolled)
+            // In a real app, you might have an 'enrollments' table linking students to courses.
+            const { data: allStudents, error: studentsError } = await supabase
+                .from('user')
+                .select('id, name, student_id')
+                .eq('role', 'student')
+                .order('name');
+
+            if (studentsError) throw studentsError;
+
             // Step A: Find ALL sessions for the selected Course + Week
             const { data: sessions, error: sessionError } = await supabase
                 .from('attendance_sessions')
@@ -101,7 +111,7 @@ export default function StatisticsScreen() {
 
             setSessionFound(true);
 
-            // Step B: For each session, get records
+            // Step B: For each session, get records and merge with all students
             const sessionsWithData: SessionData[] = [];
 
             for (const session of sessions) {
@@ -110,20 +120,33 @@ export default function StatisticsScreen() {
                     .select(`
                         status,
                         scan_time,
-                        student:student_id (id, name, student_id)
+                        student_id
                     `)
-                    .eq('session_id', session.id)
-                    .order('scan_time', { ascending: true });
+                    .eq('session_id', session.id);
 
                 if (recordsError) throw recordsError;
 
-                const formattedList: StudentAttendance[] = records.map((r: any) => ({
-                    student_id: r.student.id,
-                    name: r.student.name || 'Unknown',
-                    student_number: r.student.student_id || 'N/A',
-                    status: r.status,
-                    scan_time: r.scan_time,
-                }));
+                // Create a map of existing records for quick lookup
+                const attendanceMap = new Map();
+                records.forEach((r: any) => {
+                    attendanceMap.set(r.student_id, r);
+                });
+
+                // Merge all students with attendance records
+                const formattedList: StudentAttendance[] = (allStudents || []).map(student => {
+                    const record = attendanceMap.get(student.id);
+                    return {
+                        student_id: student.id,
+                        name: student.name || 'Unknown',
+                        student_number: student.student_id || 'N/A',
+                        status: record ? record.status : 'absent',
+                        scan_time: record ? record.scan_time : null,
+                    };
+                });
+
+                // Sort by name
+                formattedList.sort((a, b) => a.name.localeCompare(b.name));
+
 
                 sessionsWithData.push({
                     id: session.id,
@@ -225,24 +248,43 @@ export default function StatisticsScreen() {
         </View>
     );
 
-    const renderStudentItem = ({ item }: { item: StudentAttendance }) => (
-        <View style={styles.studentRow}>
-            <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>{item.name}</Text>
-                <Text style={styles.studentId}>{item.student_number}</Text>
-            </View>
-            <View style={styles.statusContainer}>
-                <View style={styles.statusBadge}>
-                    <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+    const getStatusColor = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'present':
+                return colors.success;
+            case 'absent':
+                return colors.error; // You might need to add this to commonStyles or use a hardcoded color like '#FF3B30'
+            case 'late':
+                return '#FF9500'; // Orange
+            default:
+                return colors.textSecondary;
+        }
+    };
+
+    const renderStudentItem = ({ item }: { item: StudentAttendance }) => {
+        const statusColor = getStatusColor(item.status);
+
+        return (
+            <View style={styles.studentRow}>
+                <View style={styles.studentInfo}>
+                    <Text style={styles.studentName}>{item.name}</Text>
+                    <Text style={styles.studentId}>{item.student_number}</Text>
                 </View>
-                {item.scan_time && (
-                    <Text style={styles.timeText}>
-                        {new Date(item.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                )}
+                <View style={styles.statusContainer}>
+                    <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                        <Text style={[styles.statusText, { color: statusColor }]}>{item.status.toUpperCase()}</Text>
+                    </View>
+                    {item.scan_time ? (
+                        <Text style={styles.timeText}>
+                            {new Date(item.scan_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                    ) : (
+                        <Text style={styles.timeText}>--:--</Text>
+                    )}
+                </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     const renderContent = () => {
         if (loading && !sessionFound) {
@@ -294,7 +336,7 @@ export default function StatisticsScreen() {
 
                         <View style={styles.listContainer}>
                             <View style={styles.listHeader}>
-                                <Text style={styles.listTitle}>Students Present ({session.attendance.length})</Text>
+                                <Text style={styles.listTitle}>Student Attendance ({session.attendance.length})</Text>
                             </View>
 
                             {session.attendance.length === 0 ? (
@@ -497,7 +539,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: spacing.md,
     },
-    studentInfo: {},
+    studentInfo: {
+        flex: 1,
+        marginRight: spacing.md,
+    },
     studentName: {
         ...typography.body,
         fontWeight: '600',
@@ -509,18 +554,18 @@ const styles = StyleSheet.create({
     },
     statusContainer: {
         alignItems: 'flex-end',
+        flexShrink: 0,
     },
     statusBadge: {
-        backgroundColor: colors.success + '20', // transparent green
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 12,
         marginBottom: 2,
+        alignItems: 'center',
     },
     statusText: {
         fontSize: 10,
         fontWeight: '700',
-        color: colors.success,
     },
     timeText: {
         ...typography.caption,
