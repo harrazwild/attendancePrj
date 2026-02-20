@@ -44,6 +44,12 @@ export default function AuthScreen() {
         student_id: user.student_id
       });
 
+      if (!user.role) {
+        console.log('User authenticated but role is missing. Waiting or handling as error.');
+        // Don't redirect yet, let AuthContext fetch the role
+        return;
+      }
+
       if (user.role === 'student') {
         console.log('Redirecting student to /student-qr');
         router.replace('/student-qr' as any);
@@ -51,7 +57,9 @@ export default function AuthScreen() {
         console.log('Redirecting lecturer to /(tabs)/(home)');
         router.replace('/(tabs)/(home)' as any);
       } else {
-        console.log('Unknown role, defaulting to lecturer interface');
+        console.log('Unknown role:', user.role);
+        // Fallback or error state?
+        // Defaulting to home might be safe for now if role is garbage data
         router.replace('/(tabs)/(home)' as any);
       }
     }

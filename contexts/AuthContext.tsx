@@ -203,6 +203,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           console.log('No courses to insert. Role:', role, 'Courses length:', courses?.length);
         }
+
+        // 4. Fetch user to update local state with role
+        await fetchUser();
       }
     } catch (error) {
       console.error("Email sign up failed:", error);
