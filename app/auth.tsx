@@ -22,23 +22,28 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
+  const [courses, setCourses] = useState<Array<{ name: string; code: string }>>([]);
+  const [courseName, setCourseName] = useState('');
+  const [courseCode, setCourseCode] = useState('');
+
+  // New state variables
+  const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState<'student' | 'lecturer'>('student');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { signInWithEmail, signUpWithEmail, user } = useAuth();
+  const { signInWithEmail, signUpWithEmail, user, loading: isAuthLoading } = useAuth();
   const router = useRouter();
 
   // Handle navigation when user state changes
   useEffect(() => {
-    if (user && !loading) {
-      console.log('User detected in auth screen:', { 
-        id: user.id, 
-        email: user.email, 
+    if (user && !isAuthLoading) {
+      console.log('User detected in auth screen:', {
+        id: user.id,
+        email: user.email,
         role: user.role,
-        student_id: user.student_id 
+        student_id: user.student_id
       });
-      
+
       if (user.role === 'student') {
         console.log('Redirecting student to /student-qr');
         router.replace('/student-qr' as any);
@@ -50,12 +55,26 @@ export default function AuthScreen() {
         router.replace('/(tabs)/(home)' as any);
       }
     }
-  }, [user, loading, router]);
+  }, [user, isAuthLoading, router]);
+
+  const handleAddCourse = () => {
+    if (courseName.trim() && courseCode.trim()) {
+      setCourses([...courses, { name: courseName.trim(), code: courseCode.trim() }]);
+      setCourseName('');
+      setCourseCode('');
+    }
+  };
+
+  const handleRemoveCourse = (index: number) => {
+    const newCourses = [...courses];
+    newCourses.splice(index, 1);
+    setCourses(newCourses);
+  };
 
   const handleSubmit = async () => {
     console.log('Auth form submitted:', { isLogin, email, role });
     setError('');
-    setLoading(true);
+    setIsLoading(true);
 
     try {
       if (isLogin) {
@@ -67,16 +86,16 @@ export default function AuthScreen() {
         console.log('Attempting signup...');
         if (!name.trim()) {
           setError('Name is required');
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
         if (role === 'student' && !studentId.trim()) {
           setError('Student ID is required for students');
-          setLoading(false);
+          setIsLoading(false);
           return;
         }
-        
-        await signUpWithEmail(email, password, name, studentId, role);
+
+        await signUpWithEmail(email, password, name, studentId, role, courses);
         console.log('Signup successful');
         // Navigation will be handled by useEffect when user state updates
       }
@@ -84,7 +103,7 @@ export default function AuthScreen() {
       console.error('Auth error:', err);
       setError(err.message || 'Authentication failed');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -112,7 +131,7 @@ export default function AuthScreen() {
                   <TouchableOpacity
                     style={[styles.roleButton, role === 'student' && styles.roleButtonActive]}
                     onPress={() => setRole('student')}
-                    disabled={loading}
+                    disabled={isLoading}
                   >
                     <Text style={[styles.roleButtonText, role === 'student' && styles.roleButtonTextActive]}>
                       Student
@@ -121,7 +140,7 @@ export default function AuthScreen() {
                   <TouchableOpacity
                     style={[styles.roleButton, role === 'lecturer' && styles.roleButtonActive]}
                     onPress={() => setRole('lecturer')}
-                    disabled={loading}
+                    disabled={isLoading}
                   >
                     <Text style={[styles.roleButtonText, role === 'lecturer' && styles.roleButtonTextActive]}>
                       Lecturer
@@ -136,7 +155,7 @@ export default function AuthScreen() {
                   value={name}
                   onChangeText={setName}
                   autoCapitalize="words"
-                  editable={!loading}
+                  editable={!isLoading}
                 />
 
                 {role === 'student' && (
@@ -147,8 +166,52 @@ export default function AuthScreen() {
                     value={studentId}
                     onChangeText={setStudentId}
                     autoCapitalize="characters"
-                    editable={!loading}
+                    editable={!isLoading}
                   />
+                )}
+
+                {role === 'lecturer' && (
+                  <View style={styles.courseSection}>
+                    <Text style={styles.courseSectionTitle}>Courses</Text>
+                    {courses.map((course, index) => (
+                      <View key={index} style={styles.courseItem}>
+                        <View style={styles.courseInfo}>
+                          <Text style={styles.courseName}>{course.name}</Text>
+                          <Text style={styles.courseCode}>{course.code}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleRemoveCourse(index)}>
+                          <Text style={styles.removeButton}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+
+                    <View style={styles.addCourseContainer}>
+                      <TextInput
+                        style={[styles.input, styles.courseInput]}
+                        placeholder="Course Name"
+                        placeholderTextColor={colors.textLight}
+                        value={courseName}
+                        onChangeText={setCourseName}
+                        editable={!isLoading}
+                      />
+                      <TextInput
+                        style={[styles.input, styles.courseInput]}
+                        placeholder="Code"
+                        placeholderTextColor={colors.textLight}
+                        value={courseCode}
+                        onChangeText={setCourseCode}
+                        autoCapitalize="characters"
+                        editable={!isLoading}
+                      />
+                      <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={handleAddCourse}
+                        disabled={isLoading || !courseName.trim() || !courseCode.trim()}
+                      >
+                        <Text style={styles.addButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 )}
               </>
             )}
@@ -161,7 +224,7 @@ export default function AuthScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              editable={!loading}
+              editable={!isLoading}
             />
 
             <TextInput
@@ -171,17 +234,17 @@ export default function AuthScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              editable={!loading}
+              editable={!isLoading}
             />
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             <TouchableOpacity
-              style={[styles.button, loading && styles.buttonDisabled]}
+              style={[styles.button, isLoading && styles.buttonDisabled]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? (
+              {isLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.buttonText}>{isLogin ? 'Sign In' : 'Sign Up'}</Text>
@@ -194,7 +257,7 @@ export default function AuthScreen() {
                 setIsLogin(!isLogin);
                 setError('');
               }}
-              disabled={loading}
+              disabled={isLoading}
             >
               <Text style={styles.switchText}>
                 {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
@@ -299,5 +362,60 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     textAlign: 'center',
     ...typography.bodySmall,
+  },
+  courseSection: {
+    marginBottom: spacing.md,
+  },
+  courseSectionTitle: {
+    ...typography.body,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  courseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.card,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  courseInfo: {
+    flex: 1,
+  },
+  courseName: {
+    ...typography.body,
+    color: colors.text,
+  },
+  courseCode: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  removeButton: {
+    color: colors.error,
+    ...typography.bodySmall,
+  },
+  addCourseContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  courseInput: {
+    flex: 1,
+    marginBottom: 0, // Override default margin
+  },
+  addButton: {
+    backgroundColor: colors.primary,
+    width: 48,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    fontSize: 24,
+    color: colors.textDark,
+    fontWeight: '600',
   },
 });

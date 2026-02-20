@@ -17,7 +17,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, name?: string, studentId?: string, role?: 'student' | 'lecturer') => Promise<void>;
+  signUpWithEmail: (email: string, password: string, name?: string, studentId?: string, role?: 'student' | 'lecturer', courses?: { name: string, code: string }[]) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithGitHub: () => Promise<void>;
@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: session.user.email || '',
             name: userName || metaName, // Prefer DB/Synced name, fallback to meta
             image: session.user.user_metadata?.avatar_url,
-            role: userData?.role || 'student',
+            role: userData?.role,
             student_id: userData?.student_id,
           });
 
-          console.log('Set user state with role:', userData?.role || 'student');
+          console.log('Set user state with role:', userData?.role);
         } else {
           setUser(null);
         }
@@ -124,11 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: session.user.email || '',
           name: userName || metaName,
           image: session.user.user_metadata?.avatar_url,
-          role: userData?.role || 'student',
+          role: userData?.role,
           student_id: userData?.student_id,
         });
 
-        console.log('Set user state with role (fetchUser):', userData?.role || 'student');
+        console.log('Set user state with role (fetchUser):', userData?.role);
       } else {
         setUser(null);
       }
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string, name?: string, studentId?: string, role?: 'student' | 'lecturer') => {
+  const signUpWithEmail = async (email: string, password: string, name?: string, studentId?: string, role?: 'student' | 'lecturer', courses?: { name: string, code: string }[]) => {
     try {
       // 1. Sign up user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -176,6 +176,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (dbError) {
           console.error('Error inserting user data:', dbError);
           // Don't throw error here - auth was successful, just log the issue
+        }
+
+        // 3. Insert courses if role is lecturer and courses are provided
+        if (role === 'lecturer' && courses && courses.length > 0) {
+          const coursesToInsert = courses.map(course => ({
+            lecturer_id: authData.user!.id,
+            name: course.name,
+            code: course.code
+          }));
+
+          const { error: coursesError } = await supabase
+            .from('courses')
+            .insert(coursesToInsert);
+
+          if (coursesError) {
+            console.error('Error inserting courses:', coursesError);
+            // Optionally throw error or just log it?
+            // Prioritizing user creation success over course creation failure for now, could act as a partial success
+          }
         }
       }
     } catch (error) {
@@ -217,7 +236,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = async (name: string) => {
     try {
       if (!user?.id) throw new Error("No user logged in");
-      
+
       const { error } = await supabase
         .from('user')
         .update({ name })
